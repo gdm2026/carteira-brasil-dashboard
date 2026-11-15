@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Carteira Brasil - Dashboard</title>
+<style>
+  :root{
+    --bg:#0b0f17;
+    --card:#131a26;
+    --card-border:#232c3d;
+    --text:#e8ecf3;
+    --muted:#8793a8;
+    --accent:#3b82f6;
+    --green:#22c55e;
+    --green-bg:rgba(34,197,94,0.12);
+    --red:#ef4444;
+    --red-bg:rgba(239,68,68,0.12);
+    --amber:#f59e0b;
+    --amber-bg:rgba(245,158,11,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  body{padding:16px 14px 40px;max-width:560px;margin:0 auto;}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+  h1{font-size:19px;margin:0 0 4px;font-weight:700;}
+  .sub{color:var(--muted);font-size:12px;}
+  button#refresh{
+    background:var(--card);border:1px solid var(--card-border);color:var(--text);
+    border-radius:10px;padding:9px 12px;font-size:13px;display:flex;align-items:center;gap:6px;
+  }
+  button#refresh:active{opacity:0.7;}
+  .spin{animation:spin 0.8s linear infinite;display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .summary{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;
+  }
+  .summary .box{
+    background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px;
+  }
+  .summary .box.full{grid-column:1 / -1;}
+  .box .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .box .value{font-size:20px;font-weight:700;}
+  .value.pos{color:var(--green);}
+  .value.neg{color:var(--red);}
+
+  .assets{display:flex;flex-direction:column;gap:10px;}
+  .asset{
+    background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;
+  }
+  .asset-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .asset-name{font-size:16px;font-weight:700;}
+  .badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;}
+  .badge.in{background:var(--green-bg);color:var(--green);}
+  .badge.out{background:var(--amber-bg);color:var(--amber);}
+  .badge.na{background:var(--card-border);color:var(--muted);}
+  .asset-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px;}
+  .asset-row b{color:var(--text);font-weight:600;}
+  .pl.pos{color:var(--green);font-weight:600;}
+  .pl.neg{color:var(--red);font-weight:600;}
+
+  footer{margin-top:22px;color:var(--muted);font-size:11px;text-align:center;line-height:1.5;}
+  .error{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
+  .skeleton{opacity:0.4;}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Carteira Brasil</h1>
+      <div class="sub" id="updated">carregando...</div>
+    </div>
+    <button id="refresh" onclick="load(true)">↻ Atualizar</button>
+  </header>
+
+  <div id="errorBox"></div>
+
+  <div class="summary">
+    <div class="box"><div class="label">Investido</div><div class="value" id="totalInvest">—</div></div>
+    <div class="box"><div class="label">Valor atual</div><div class="value" id="totalAtual">—</div></div>
+    <div class="box full"><div class="label">Lucro / Prejuízo</div><div class="value" id="totalPL">—</div></div>
+  </div>
+
+  <div class="assets" id="assets">
+    <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
+  </div>
+
+  <footer>
+    Dados via Google Finance (atraso típico de 15–20 min). Preço-limite é o preço das ordens enviadas em 14/11/2026.<br>
+    Toque em "Atualizar" para buscar os valores mais recentes.
+  </footer>
+
+<script>
+const SHEET_ID = "1MnciZch8pB_2Tq_T3yPjF6ef6CwspAuGGFXQO7NNbdg";
+const GID = "1288611707"; // aba Dashboard
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&_=` + Date.now();
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; }
+      } else { field += c; }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else { field += c; }
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function toNumber(s){
+  if(!s) return NaN;
+  const clean = s.replace(/\./g,'').replace(',', '.').replace(/[^\d.-]/g,'');
+  return parseFloat(clean);
+}
+
+function fmtBRL(n){
+  if(isNaN(n)) return '—';
+  return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+
+function fmtPct(n){
+  if(isNaN(n)) return '—';
+  const s = (n*100).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
+  return (n>0?'+':'') + s + '%';
+}
+
+async function load(manual){
+  const btn = document.getElementById('refresh');
+  const icon = btn.querySelector('.spin') || btn;
+  btn.innerHTML = '<span class="spin">↻</span> Atualizando';
+  const errorBox = document.getElementById('errorBox');
+  errorBox.innerHTML = '';
+  try{
+    const res = await fetch(CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
+    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
+
+    const dataRows = [];
+    for(let i = headerIdx+1; i < rows.length; i++){
+      const r = rows[i];
+      if(!r[0] || r[0].trim() === '') continue;
+      if(r[0].trim() === 'Total'){
+        dataRows.totalRow = r;
+        break;
+      }
+      dataRows.push(r);
+    }
+
+    const assetsEl = document.getElementById('assets');
+    assetsEl.innerHTML = '';
+
+    let totalInvest = 0, totalAtual = 0;
+
+    dataRows.forEach(r => {
+      const nome = r[0];
+      const limite = toNumber(r[1]);
+      const qtd = toNumber(r[2]);
+      const atual = toNumber(r[3]);
+      const varr = toNumber(r[4]);
+      const status = (r[5]||'').trim();
+      const investido = toNumber(r[6]);
+      const valorAtual = toNumber(r[7]);
+      const pl = toNumber(r[8]);
+
+      if(!isNaN(investido)) totalInvest += investido;
+      if(!isNaN(valorAtual)) totalAtual += valorAtual;
+
+      let badgeClass = 'na', badgeText = status || 'Sem cotação';
+      if(status === 'Dentro do limite'){ badgeClass='in'; }
+      else if(status === 'Acima do limite'){ badgeClass='out'; }
+
+      const plClass = pl > 0 ? 'pos' : (pl < 0 ? 'neg' : '');
+
+      const div = document.createElement('div');
+      div.className = 'asset';
+      div.innerHTML = `
+        <div class="asset-top">
+          <div class="asset-name">${nome}</div>
+          <div class="badge ${badgeClass}">${badgeText}</div>
+        </div>
+        <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtBRL(atual)}</b></div>
+        <div class="asset-row"><span>Preço-limite da ordem</span><b>${fmtBRL(limite)}</b></div>
+        <div class="asset-row"><span>Variação vs. limite</span><b>${fmtPct(varr)}</b></div>
+        <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtBRL(valorAtual)}</b></div>
+        <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtBRL(pl)}</b></div>
+      `;
+      assetsEl.appendChild(div);
+    });
+
+    document.getElementById('totalInvest').textContent = fmtBRL(totalInvest);
+    document.getElementById('totalAtual').textContent = fmtBRL(totalAtual);
+    const totalPL = totalAtual - totalInvest;
+    const plEl = document.getElementById('totalPL');
+    plEl.textContent = fmtBRL(totalPL);
+    plEl.className = 'value ' + (totalPL > 0 ? 'pos' : (totalPL < 0 ? 'neg' : ''));
+
+    document.getElementById('updated').textContent =
+      'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+
+  } catch(err){
+    errorBox.innerHTML = `<div class="error">Não consegui buscar os dados agora (${err.message}). Verifique sua internet e tente de novo.</div>`;
+    document.getElementById('updated').textContent = 'Falha na atualização';
+  } finally {
+    btn.innerHTML = '↻ Atualizar';
+  }
+}
+
+load(false);
+</script>
+</body>
+</html>
