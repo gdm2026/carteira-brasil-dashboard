@@ -60,6 +60,17 @@
   .pl.pos{color:var(--green);font-weight:600;}
   .pl.neg{color:var(--red);font-weight:600;}
 
+  .section-title{font-size:15px;font-weight:700;margin:26px 0 10px;display:flex;align-items:center;gap:8px;}
+  .section-title .count{font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--card-border);border-radius:999px;padding:2px 8px;}
+
+  .watch-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .watch-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .watch-name{font-size:16px;font-weight:700;}
+  .watch-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--card-border);color:var(--muted);}
+  .watch-badge.bought{background:var(--green-bg);color:var(--green);}
+  .watch-obs{color:var(--muted);font-size:12px;margin-top:6px;font-style:italic;}
+  .empty-msg{color:var(--muted);font-size:13px;text-align:center;padding:16px 0;}
+
   footer{margin-top:22px;color:var(--muted);font-size:11px;text-align:center;line-height:1.5;}
   .error{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
   .skeleton{opacity:0.4;}
@@ -71,7 +82,7 @@
       <h1>Carteira Brasil</h1>
       <div class="sub" id="updated">carregando...</div>
     </div>
-    <button id="refresh" onclick="load(true)">↻ Atualizar</button>
+    <button id="refresh" onclick="load(true); loadWatchlist();">↻ Atualizar</button>
   </header>
 
   <div id="errorBox"></div>
@@ -86,15 +97,24 @@
     <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
   </div>
 
+  <div class="section-title">👀 Em acompanhamento <span class="count" id="watchCount"></span></div>
+  <div id="watchErrorBox"></div>
+  <div id="watchlist">
+    <div class="watch-card skeleton"><div class="watch-top"><div class="watch-name">Carregando…</div></div></div>
+  </div>
+
   <footer>
     Dados via Google Finance (atraso típico de 15–20 min). Preço-limite é o preço das ordens enviadas em 14/11/2026.<br>
+    Em acompanhamento: ativos que ainda não foram comprados, só observados.<br>
     Toque em "Atualizar" para buscar os valores mais recentes.
   </footer>
 
 <script>
 const SHEET_ID = "1MnciZch8pB_2Tq_T3yPjF6ef6CwspAuGGFXQO7NNbdg";
 const GID = "1288611707"; // aba Dashboard
+const WATCH_GID = "1260815454"; // aba Acompanhamento
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&_=` + Date.now();
+const WATCH_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${WATCH_GID}&_=` + Date.now();
 
 function parseCSV(text){
   const rows = [];
@@ -229,7 +249,75 @@ async function load(manual){
   }
 }
 
+function fmtNum(n){
+  if(isNaN(n)) return '—';
+  return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+async function loadWatchlist(){
+  const watchErrorBox = document.getElementById('watchErrorBox');
+  const watchlistEl = document.getElementById('watchlist');
+  const countEl = document.getElementById('watchCount');
+  watchErrorBox.innerHTML = '';
+  try{
+    const res = await fetch(WATCH_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
+    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
+
+    const dataRows = [];
+    for(let i = headerIdx+1; i < rows.length; i++){
+      const r = rows[i];
+      if(!r[0] || r[0].trim() === '') continue;
+      dataRows.push(r);
+    }
+
+    watchlistEl.innerHTML = '';
+
+    if(dataRows.length === 0){
+      watchlistEl.innerHTML = '<div class="empty-msg">Nenhum ativo em acompanhamento ainda.</div>';
+      countEl.textContent = '';
+      return;
+    }
+
+    countEl.textContent = dataRows.length;
+
+    dataRows.forEach(r => {
+      const nome = r[0];
+      const dataEntrada = (r[1]||'').trim();
+      const precoEntrada = toNumber(r[2]);
+      const precoAtual = toNumber(r[3]);
+      const varr = toNumber(r[4]);
+      const obs = (r[5]||'').trim();
+      const comprou = (r[6]||'').trim().toUpperCase() === 'TRUE';
+
+      const varClass = isNaN(varr) ? '' : (varr > 0 ? 'pos' : (varr < 0 ? 'neg' : ''));
+
+      const div = document.createElement('div');
+      div.className = 'watch-card';
+      div.innerHTML = `
+        <div class="watch-top">
+          <div class="watch-name">${nome}</div>
+          <div class="watch-badge ${comprou?'bought':''}">${comprou ? 'Comprado' : 'Observando'}</div>
+        </div>
+        <div class="asset-row"><span>Entrada (${dataEntrada||'-'})</span><b>${isNaN(precoEntrada)?'—':fmtNum(precoEntrada)}</b></div>
+        <div class="asset-row"><span>Preço atual</span><b>${isNaN(precoAtual)?'—':fmtNum(precoAtual)}</b></div>
+        <div class="asset-row"><span>Variação desde a entrada</span><b class="pl ${varClass}">${fmtPctRaw(varr)}</b></div>
+        ${obs ? `<div class="watch-obs">${obs}</div>` : ''}
+      `;
+      watchlistEl.appendChild(div);
+    });
+
+  } catch(err){
+    watchErrorBox.innerHTML = `<div class="error">Não consegui buscar o acompanhamento agora (${err.message}).</div>`;
+  }
+}
+
 load(false);
+loadWatchlist();
 </script>
 </body>
 </html>
