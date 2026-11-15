@@ -134,6 +134,16 @@ function fmtPct(n){
   return (n>0?'+':'') + s + '%';
 }
 
+// A coluna "Variação vs. limite" já vem do CSV formatada como percentual
+// (ex.: "-2,9%"), ou seja, toNumber() já devolve o valor em pontos percentuais
+// (-2.9), não uma fração (-0.029). Por isso usa formatação direta, sem
+// multiplicar por 100 de novo (evita o bug de exibir "-290,0%").
+function fmtPctRaw(n){
+  if(isNaN(n)) return '—';
+  const s = n.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
+  return (n>0?'+':'') + s + '%';
+}
+
 async function load(manual){
   const btn = document.getElementById('refresh');
   const icon = btn.querySelector('.spin') || btn;
@@ -194,7 +204,7 @@ async function load(manual){
         </div>
         <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtBRL(atual)}</b></div>
         <div class="asset-row"><span>Preço-limite da ordem</span><b>${fmtBRL(limite)}</b></div>
-        <div class="asset-row"><span>Variação vs. limite</span><b>${fmtPct(varr)}</b></div>
+        <div class="asset-row"><span>Variação vs. limite</span><b>${fmtPctRaw(varr)}</b></div>
         <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtBRL(valorAtual)}</b></div>
         <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtBRL(pl)}</b></div>
       `;
