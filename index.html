@@ -76,6 +76,14 @@
   .buy-name{font-size:16px;font-weight:700;}
   .buy-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--amber-bg);color:var(--amber);}
 
+  .cost-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .cost-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .cost-date{font-size:16px;font-weight:700;}
+  .cost-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--card-border);color:var(--muted);}
+  .cost-badge.confirmed{background:var(--green-bg);color:var(--green);}
+  .cost-badge.estimated{background:var(--amber-bg);color:var(--amber);}
+  .cost-total{background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+
   footer{margin-top:22px;color:var(--muted);font-size:11px;text-align:center;line-height:1.5;}
   .error{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
   .skeleton{opacity:0.4;}
@@ -87,7 +95,7 @@
       <h1>Carteira Brasil</h1>
       <div class="sub" id="updated">carregando...</div>
     </div>
-    <button id="refresh" onclick="load(true); loadBuying(); loadWatchlist();">↻ Atualizar</button>
+    <button id="refresh" onclick="load(true); loadBuying(); loadWatchlist(); loadCosts();">↻ Atualizar</button>
   </header>
 
   <div id="errorBox"></div>
@@ -114,11 +122,18 @@
     <div class="watch-card skeleton"><div class="watch-top"><div class="watch-name">Carregando…</div></div></div>
   </div>
 
+  <div class="section-title">💸 Custos (corretagem, impostos, venda) <span class="count" id="costCount"></span></div>
+  <div id="costErrorBox"></div>
+  <div id="costs">
+    <div class="cost-card skeleton"><div class="cost-top"><div class="cost-date">Carregando…</div></div></div>
+  </div>
+
   <footer>
     Dados via Google Finance (atraso típico de 15–20 min). Preço pago é o preço médio real de compra executado na corretora.<br>
     "Não comprado": ordem ainda não executada (rejeitada ou pendente) — não entra no total investido.<br>
     Em compra: ordens enviadas à corretora (mercado à vista/fracionário) e ainda aguardando execução no próximo pregão.<br>
     Em acompanhamento: ativos que ainda não foram comprados, só observados.<br>
+    Custos: corretagem e impostos por nota de negociação. "Estimado" = aguardando nota oficial (D+1); "Confirmado" = já conferido na nota da XP. Despesas de venda só aparecem quando algo for vendido.<br>
     Toque em "Atualizar" para buscar os valores mais recentes.
   </footer>
 
@@ -127,9 +142,11 @@ const SHEET_ID = "1MnciZch8pB_2Tq_T3yPjF6ef6CwspAuGGFXQO7NNbdg";
 const GID = "1288611707"; // aba Dashboard
 const WATCH_GID = "1260815454"; // aba Acompanhamento
 const BUY_GID = "15054070"; // aba Em Compra
+const COST_GID = "450441000"; // aba Custos
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&_=` + Date.now();
 const WATCH_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${WATCH_GID}&_=` + Date.now();
 const BUY_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${BUY_GID}&_=` + Date.now();
+const COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${COST_GID}&_=` + Date.now();
 
 function parseCSV(text){
   const rows = [];
@@ -391,9 +408,92 @@ async function loadWatchlist(){
   }
 }
 
+async function loadCosts(){
+  const costErrorBox = document.getElementById('costErrorBox');
+  const costsEl = document.getElementById('costs');
+  const countEl = document.getElementById('costCount');
+  costErrorBox.innerHTML = '';
+  try{
+    const res = await fetch(COST_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Data');
+    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
+
+    const dataRows = [];
+    let totalRow = null;
+    for(let i = headerIdx+1; i < rows.length; i++){
+      const r = rows[i];
+      if(!r[0] || r[0].trim() === '') continue;
+      if(r[0].trim().toLowerCase().startsWith('total')){ totalRow = r; break; }
+      dataRows.push(r);
+    }
+
+    costsEl.innerHTML = '';
+
+    if(dataRows.length === 0){
+      costsEl.innerHTML = '<div class="empty-msg">Nenhum custo registrado ainda.</div>';
+      countEl.textContent = '';
+      return;
+    }
+
+    countEl.textContent = dataRows.length;
+
+    dataRows.forEach(r => {
+      const data = (r[0]||'').trim();
+      const operacao = (r[1]||'').trim();
+      const nNegocios = (r[2]||'').trim();
+      const corretagem = toNumber(r[3]);
+      const impostos = toNumber(r[4]);
+      const despesaVenda = toNumber(r[5]);
+      const total = toNumber(r[6]);
+      const status = (r[7]||'').trim();
+      const isConfirmed = status.toLowerCase().includes('confirmado');
+
+      const div = document.createElement('div');
+      div.className = 'cost-card';
+      div.innerHTML = `
+        <div class="cost-top">
+          <div class="cost-date">${data} · ${operacao||'—'}</div>
+          <div class="cost-badge ${isConfirmed?'confirmed':'estimated'}">${status||'—'}</div>
+        </div>
+        <div class="asset-row"><span>Nº negócios</span><b>${nNegocios||'—'}</b></div>
+        <div class="asset-row"><span>Corretagem</span><b>${isNaN(corretagem)?'—':fmtBRL(corretagem)}</b></div>
+        <div class="asset-row"><span>Impostos/IRRF</span><b>${isNaN(impostos)?'pendente':fmtBRL(impostos)}</b></div>
+        <div class="asset-row"><span>Despesas de venda</span><b>${isNaN(despesaVenda)?'—':fmtBRL(despesaVenda)}</b></div>
+        <div class="asset-row"><span>Total</span><b>${isNaN(total)?'pendente':fmtBRL(total)}</b></div>
+      `;
+      costsEl.appendChild(div);
+    });
+
+    if(totalRow){
+      const tCorretagem = toNumber(totalRow[3]);
+      const tImpostos = toNumber(totalRow[4]);
+      const tVenda = toNumber(totalRow[5]);
+      const tTotal = toNumber(totalRow[6]);
+      const div = document.createElement('div');
+      div.className = 'cost-total';
+      div.innerHTML = `
+        <div class="cost-top"><div class="cost-date">Total acumulado</div></div>
+        <div class="asset-row"><span>Corretagem</span><b>${isNaN(tCorretagem)?'—':fmtBRL(tCorretagem)}</b></div>
+        <div class="asset-row"><span>Impostos/IRRF</span><b>${isNaN(tImpostos)?'—':fmtBRL(tImpostos)}</b></div>
+        <div class="asset-row"><span>Despesas de venda</span><b>${isNaN(tVenda)?'—':fmtBRL(tVenda)}</b></div>
+        <div class="asset-row"><span>Total geral</span><b>${isNaN(tTotal)?'—':fmtBRL(tTotal)}</b></div>
+      `;
+      costsEl.appendChild(div);
+    }
+
+  } catch(err){
+    costErrorBox.innerHTML = `<div class="error">Não consegui buscar os custos agora (${err.message}).</div>`;
+  }
+}
+
 load(false);
 loadBuying();
 loadWatchlist();
+loadCosts();
 </script>
 </body>
 </html>
