@@ -71,6 +71,11 @@
   .watch-obs{color:var(--muted);font-size:12px;margin-top:6px;font-style:italic;}
   .empty-msg{color:var(--muted);font-size:13px;text-align:center;padding:16px 0;}
 
+  .buy-card{background:var(--card);border:1px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .buy-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .buy-name{font-size:16px;font-weight:700;}
+  .buy-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--amber-bg);color:var(--amber);}
+
   footer{margin-top:22px;color:var(--muted);font-size:11px;text-align:center;line-height:1.5;}
   .error{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
   .skeleton{opacity:0.4;}
@@ -82,7 +87,7 @@
       <h1>Carteira Brasil</h1>
       <div class="sub" id="updated">carregando...</div>
     </div>
-    <button id="refresh" onclick="load(true); loadWatchlist();">↻ Atualizar</button>
+    <button id="refresh" onclick="load(true); loadBuying(); loadWatchlist();">↻ Atualizar</button>
   </header>
 
   <div id="errorBox"></div>
@@ -97,6 +102,12 @@
     <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
   </div>
 
+  <div class="section-title">🛒 Em compra <span class="count" id="buyCount"></span></div>
+  <div id="buyErrorBox"></div>
+  <div id="buying">
+    <div class="buy-card skeleton"><div class="buy-top"><div class="buy-name">Carregando…</div></div></div>
+  </div>
+
   <div class="section-title">👀 Em acompanhamento <span class="count" id="watchCount"></span></div>
   <div id="watchErrorBox"></div>
   <div id="watchlist">
@@ -104,7 +115,9 @@
   </div>
 
   <footer>
-    Dados via Google Finance (atraso típico de 15–20 min). Preço-limite é o preço das ordens enviadas em 14/11/2026.<br>
+    Dados via Google Finance (atraso típico de 15–20 min). Preço pago é o preço médio real de compra executado na corretora.<br>
+    "Não comprado": ordem ainda não executada (rejeitada ou pendente) — não entra no total investido.<br>
+    Em compra: ordens enviadas à corretora (mercado à vista/fracionário) e ainda aguardando execução no próximo pregão.<br>
     Em acompanhamento: ativos que ainda não foram comprados, só observados.<br>
     Toque em "Atualizar" para buscar os valores mais recentes.
   </footer>
@@ -113,8 +126,10 @@
 const SHEET_ID = "1MnciZch8pB_2Tq_T3yPjF6ef6CwspAuGGFXQO7NNbdg";
 const GID = "1288611707"; // aba Dashboard
 const WATCH_GID = "1260815454"; // aba Acompanhamento
+const BUY_GID = "15054070"; // aba Em Compra
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&_=` + Date.now();
 const WATCH_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${WATCH_GID}&_=` + Date.now();
+const BUY_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${BUY_GID}&_=` + Date.now();
 
 function parseCSV(text){
   const rows = [];
@@ -210,8 +225,8 @@ async function load(manual){
       if(!isNaN(valorAtual)) totalAtual += valorAtual;
 
       let badgeClass = 'na', badgeText = status || 'Sem cotação';
-      if(status === 'Dentro do limite'){ badgeClass='in'; }
-      else if(status === 'Acima do limite'){ badgeClass='out'; }
+      if(status === 'Em lucro'){ badgeClass='in'; }
+      else if(status === 'Em prejuízo'){ badgeClass='out'; }
 
       const plClass = pl > 0 ? 'pos' : (pl < 0 ? 'neg' : '');
 
@@ -223,8 +238,8 @@ async function load(manual){
           <div class="badge ${badgeClass}">${badgeText}</div>
         </div>
         <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtBRL(atual)}</b></div>
-        <div class="asset-row"><span>Preço-limite da ordem</span><b>${fmtBRL(limite)}</b></div>
-        <div class="asset-row"><span>Variação vs. limite</span><b>${fmtPctRaw(varr)}</b></div>
+        <div class="asset-row"><span>Preço pago</span><b>${limite===0||isNaN(limite)?'—':fmtBRL(limite)}</b></div>
+        <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPctRaw(varr)}</b></div>
         <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtBRL(valorAtual)}</b></div>
         <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtBRL(pl)}</b></div>
       `;
@@ -252,6 +267,66 @@ async function load(manual){
 function fmtNum(n){
   if(isNaN(n)) return '—';
   return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+async function loadBuying(){
+  const buyErrorBox = document.getElementById('buyErrorBox');
+  const buyingEl = document.getElementById('buying');
+  const countEl = document.getElementById('buyCount');
+  buyErrorBox.innerHTML = '';
+  try{
+    const res = await fetch(BUY_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
+    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
+
+    const dataRows = [];
+    for(let i = headerIdx+1; i < rows.length; i++){
+      const r = rows[i];
+      if(!r[0] || r[0].trim() === '') continue;
+      if(r[0].trim().toLowerCase().startsWith('total')) break;
+      dataRows.push(r);
+    }
+
+    buyingEl.innerHTML = '';
+
+    if(dataRows.length === 0){
+      buyingEl.innerHTML = '<div class="empty-msg">Nenhuma ordem pendente no momento.</div>';
+      countEl.textContent = '';
+      return;
+    }
+
+    countEl.textContent = dataRows.length;
+
+    dataRows.forEach(r => {
+      const nome = r[0];
+      const qtd = (r[1]||'').trim();
+      const precoEnvio = toNumber(r[2]);
+      const valorEstimado = toNumber(r[3]);
+      const tipoOrdem = (r[4]||'').trim();
+      const status = (r[5]||'').trim();
+
+      const div = document.createElement('div');
+      div.className = 'buy-card';
+      div.innerHTML = `
+        <div class="buy-top">
+          <div class="buy-name">${nome}</div>
+          <div class="buy-badge">${status || 'Agendada'}</div>
+        </div>
+        <div class="asset-row"><span>Qtd.</span><b>${qtd||'—'}</b></div>
+        <div class="asset-row"><span>Preço de envio</span><b>${isNaN(precoEnvio)?'—':fmtBRL(precoEnvio)}</b></div>
+        <div class="asset-row"><span>Valor estimado</span><b>${isNaN(valorEstimado)?'—':fmtBRL(valorEstimado)}</b></div>
+        <div class="asset-row"><span>Tipo de ordem</span><b>${tipoOrdem||'—'}</b></div>
+      `;
+      buyingEl.appendChild(div);
+    });
+
+  } catch(err){
+    buyErrorBox.innerHTML = `<div class="error">Não consegui buscar as ordens em compra agora (${err.message}).</div>`;
+  }
 }
 
 async function loadWatchlist(){
@@ -317,6 +392,7 @@ async function loadWatchlist(){
 }
 
 load(false);
+loadBuying();
 loadWatchlist();
 </script>
 </body>
