@@ -95,7 +95,7 @@
       <h1>Carteira Brasil</h1>
       <div class="sub" id="updated">carregando...</div>
     </div>
-    <button id="refresh" onclick="load(true); loadBuying(); loadWatchlist(); loadCosts();">↻ Atualizar</button>
+    <button id="refresh" onclick="load(true); loadUSA(); loadBuying(); loadWatchlist(); loadCosts();">↻ Atualizar</button>
   </header>
 
   <div id="errorBox"></div>
@@ -107,6 +107,17 @@
   </div>
 
   <div class="assets" id="assets">
+    <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
+  </div>
+
+  <div class="section-title">🇺🇸 Carteira EUA (IBKR)</div>
+  <div class="summary">
+    <div class="box"><div class="label">Investido (US$)</div><div class="value" id="usaInvest">—</div></div>
+    <div class="box"><div class="label">Valor atual (US$)</div><div class="value" id="usaAtual">—</div></div>
+    <div class="box full"><div class="label">Lucro / Prejuízo (US$)</div><div class="value" id="usaPL">—</div></div>
+  </div>
+  <div id="usaErrorBox"></div>
+  <div class="assets" id="usaAssets">
     <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
   </div>
 
@@ -130,6 +141,7 @@
 
   <footer>
     Dados via Google Finance (atraso típico de 15–20 min). Preço pago é o preço médio real de compra executado na corretora.<br>
+    Carteira EUA: posições reais executadas na Interactive Brokers (IBKR), em dólar. SPY/QQQ são posições-ponte enquanto a permissão de negociação para CSPX/EQQQ (mercados do Reino Unido/Suíça) não é aprovada.<br>
     "Não comprado": ordem ainda não executada (rejeitada ou pendente) — não entra no total investido.<br>
     Em compra: ordens enviadas à corretora (mercado à vista/fracionário) e ainda aguardando execução no próximo pregão.<br>
     Em acompanhamento: ativos que ainda não foram comprados, só observados.<br>
@@ -143,10 +155,12 @@ const GID = "1288611707"; // aba Dashboard
 const WATCH_GID = "1260815454"; // aba Acompanhamento
 const BUY_GID = "15054070"; // aba Em Compra
 const COST_GID = "450441000"; // aba Custos
+const USA_GID = "1867723062"; // aba Carteira EUA
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}&_=` + Date.now();
 const WATCH_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${WATCH_GID}&_=` + Date.now();
 const BUY_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${BUY_GID}&_=` + Date.now();
 const COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${COST_GID}&_=` + Date.now();
+const USA_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${USA_GID}&_=` + Date.now();
 
 function parseCSV(text){
   const rows = [];
@@ -278,6 +292,84 @@ async function load(manual){
     document.getElementById('updated').textContent = 'Falha na atualização';
   } finally {
     btn.innerHTML = '↻ Atualizar';
+  }
+}
+
+function fmtUSD(n){
+  if(isNaN(n)) return '—';
+  return n.toLocaleString('en-US', {style:'currency', currency:'USD'});
+}
+
+async function loadUSA(){
+  const errorBox = document.getElementById('usaErrorBox');
+  errorBox.innerHTML = '';
+  try{
+    const res = await fetch(USA_CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+
+    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
+    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
+
+    const dataRows = [];
+    for(let i = headerIdx+1; i < rows.length; i++){
+      const r = rows[i];
+      if(!r[0] || r[0].trim() === '') continue;
+      if(r[0].trim() === 'Total'){ dataRows.totalRow = r; break; }
+      dataRows.push(r);
+    }
+
+    const assetsEl = document.getElementById('usaAssets');
+    assetsEl.innerHTML = '';
+
+    let totalInvest = 0, totalAtual = 0;
+
+    dataRows.forEach(r => {
+      const nome = r[0];
+      const pago = toNumber(r[1]);
+      const qtd = toNumber(r[2]);
+      const atual = toNumber(r[3]);
+      const varr = toNumber(r[4]);
+      const status = (r[5]||'').trim();
+      const investido = toNumber(r[6]);
+      const valorAtual = toNumber(r[7]);
+      const pl = toNumber(r[8]);
+
+      if(!isNaN(investido)) totalInvest += investido;
+      if(!isNaN(valorAtual)) totalAtual += valorAtual;
+
+      let badgeClass = 'na', badgeText = status || 'Sem cotação';
+      if(status === 'Em lucro'){ badgeClass='in'; }
+      else if(status === 'Em prejuízo'){ badgeClass='out'; }
+
+      const plClass = pl > 0 ? 'pos' : (pl < 0 ? 'neg' : '');
+
+      const div = document.createElement('div');
+      div.className = 'asset';
+      div.innerHTML = `
+        <div class="asset-top">
+          <div class="asset-name">${nome}</div>
+          <div class="badge ${badgeClass}">${badgeText}</div>
+        </div>
+        <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtUSD(atual)}</b></div>
+        <div class="asset-row"><span>Preço pago</span><b>${pago===0||isNaN(pago)?'—':fmtUSD(pago)}</b></div>
+        <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPct(varr)}</b></div>
+        <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtUSD(valorAtual)}</b></div>
+        <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtUSD(pl)}</b></div>
+      `;
+      assetsEl.appendChild(div);
+    });
+
+    document.getElementById('usaInvest').textContent = fmtUSD(totalInvest);
+    document.getElementById('usaAtual').textContent = fmtUSD(totalAtual);
+    const totalPL = totalAtual - totalInvest;
+    const plEl = document.getElementById('usaPL');
+    plEl.textContent = fmtUSD(totalPL);
+    plEl.className = 'value ' + (totalPL > 0 ? 'pos' : (totalPL < 0 ? 'neg' : ''));
+
+  } catch(err){
+    errorBox.innerHTML = `<div class="error">Não consegui buscar a carteira EUA agora (${err.message}).</div>`;
   }
 }
 
@@ -491,6 +583,7 @@ async function loadCosts(){
 }
 
 load(false);
+loadUSA();
 loadBuying();
 loadWatchlist();
 loadCosts();
