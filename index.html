@@ -86,6 +86,7 @@
   .asset-dot{width:9px;height:9px;border-radius:2.5px;flex-shrink:0;}
   .asset-id{flex:1;min-width:0;}
   .asset-ticker{font-weight:600;font-size:14.5px;}
+  .asset-ticker .co-name{font-weight:400;font-size:11px;color:var(--muted);}
   .asset-status{font-size:11.5px;color:var(--muted);margin-top:1px;}
   .asset-status.gain{color:var(--gain);}
   .asset-status.loss{color:var(--loss);}
@@ -221,6 +222,33 @@ const USA_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?f
 
 const SEG_COLORS = ['#c98a52','#5f9c8a','#b4654a','#7fae8a','#8f78a8','#c9a441','#5b8c9e','#a85f7a','#7a9c56','#c97c7c'];
 
+const CO_NAMES = {
+  'BOVA11': 'ETF Ibovespa',
+  'DIVO11': 'ETF Dividendos',
+  'ITUB4': 'Itaú Unibanco',
+  'TAEE11': 'Taesa',
+  'WEGE3': 'WEG',
+  'KNRI11': 'Kinea Renda Imobiliária',
+  'MXRF11': 'Maxi Renda',
+  'VALE3': 'Vale',
+  'BBSE3': 'BB Seguridade',
+  'SBSP3': 'Sabesp',
+  'RDOR3': "Rede D'Or",
+  'VIVA3': 'Vivara',
+  'CYRE3': 'Cyrela',
+  'BBDC4': 'Bradesco',
+  'GOOGL': 'Alphabet (Google)',
+  'JNJ': 'Johnson & Johnson',
+  'JPM': 'JPMorgan Chase',
+  'QQQ': 'ETF Nasdaq 100',
+  'SCHD': 'ETF Dividendos EUA',
+  'SPY': 'ETF S&P 500',
+};
+function coName(ticker){
+  const t = (ticker||'').trim();
+  return CO_NAMES[t] ? ` <span class="co-name">(${CO_NAMES[t]})</span>` : '';
+}
+
 function parseCSV(text){
   const rows = [];
   let row = [], field = '', inQuotes = false;
@@ -324,7 +352,7 @@ function renderPortfolio(dataRows, opts){
         <summary>
           <span class="asset-dot" style="background:${SEG_COLORS[i%SEG_COLORS.length]}"></span>
           <span class="asset-id">
-            <div class="asset-ticker">${d.nome}</div>
+            <div class="asset-ticker">${d.nome}${coName(d.nome)}</div>
             <div class="asset-status ${plClass}">${statusTxt}</div>
           </span>
           <span class="asset-figures">
