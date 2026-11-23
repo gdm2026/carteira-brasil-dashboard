@@ -251,6 +251,7 @@ async function load(manual){
       const investido = toNumber(r[6]);
       const valorAtual = toNumber(r[7]);
       const pl = toNumber(r[8]);
+      const pctCarteira = (r[9]||'').trim();
 
       if(!isNaN(investido)) totalInvest += investido;
       if(!isNaN(valorAtual)) totalAtual += valorAtual;
@@ -273,6 +274,7 @@ async function load(manual){
         <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPctRaw(varr)}</b></div>
         <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtBRL(valorAtual)}</b></div>
         <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtBRL(pl)}</b></div>
+        <div class="asset-row"><span>% da carteira Brasil</span><b>${pctCarteira||'—'}</b></div>
       `;
       assetsEl.appendChild(div);
     });
@@ -335,6 +337,7 @@ async function loadUSA(){
       const investido = toNumber(r[6]);
       const valorAtual = toNumber(r[7]);
       const pl = toNumber(r[8]);
+      const pctCarteira = (r[9]||'').trim();
 
       if(!isNaN(investido)) totalInvest += investido;
       if(!isNaN(valorAtual)) totalAtual += valorAtual;
@@ -357,6 +360,7 @@ async function loadUSA(){
         <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPct(varr)}</b></div>
         <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtUSD(valorAtual)}</b></div>
         <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtUSD(pl)}</b></div>
+        <div class="asset-row"><span>% da carteira EUA</span><b>${pctCarteira||'—'}</b></div>
       `;
       assetsEl.appendChild(div);
     });
