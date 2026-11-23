@@ -3,150 +3,207 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Carteira Brasil - Dashboard</title>
+<meta name="theme-color" content="#0B1210">
+<title>Carteira — Brasil & EUA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b0f17;
-    --card:#131a26;
-    --card-border:#232c3d;
-    --text:#e8ecf3;
-    --muted:#8793a8;
-    --accent:#3b82f6;
-    --green:#22c55e;
-    --green-bg:rgba(34,197,94,0.12);
-    --red:#ef4444;
-    --red-bg:rgba(239,68,68,0.12);
-    --amber:#f59e0b;
-    --amber-bg:rgba(245,158,11,0.12);
+    --bg:#0b1210;
+    --surface:#121c18;
+    --surface-2:#182520;
+    --border:#243530;
+    --text:#ece7dd;
+    --text-dim:#c3bdb0;
+    --muted:#8a9a92;
+    --accent:#c98a52;
+    --accent-dim:#a06e3f;
+    --gain:#5fb088;
+    --gain-bg:rgba(95,176,136,0.12);
+    --loss:#cf6f5e;
+    --loss-bg:rgba(207,111,94,0.12);
   }
+  @media (prefers-color-scheme: light){ :root{ } }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-  body{padding:16px 14px 40px;max-width:560px;margin:0 auto;}
-  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
-  h1{font-size:19px;margin:0 0 4px;font-weight:700;}
-  .sub{color:var(--muted);font-size:12px;}
+  html{-webkit-text-size-adjust:100%;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+    padding:22px 18px 56px;max-width:640px;margin:0 auto;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--accent);color:#0b1210;}
+  a{color:var(--accent);}
+  .num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;gap:12px;}
+  .brand{font-family:'Fraunces',serif;font-weight:500;font-size:26px;letter-spacing:-0.01em;line-height:1.05;}
+  .brand em{font-style:italic;color:var(--accent);}
+  .updated{color:var(--muted);font-size:12px;margin-top:5px;}
   button#refresh{
-    background:var(--card);border:1px solid var(--card-border);color:var(--text);
-    border-radius:10px;padding:9px 12px;font-size:13px;display:flex;align-items:center;gap:6px;
+    background:transparent;border:1px solid var(--border);color:var(--text-dim);
+    border-radius:10px;padding:8px 13px;font-size:12.5px;font-family:inherit;
+    display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0;
   }
-  button#refresh:active{opacity:0.7;}
-  .spin{animation:spin 0.8s linear infinite;display:inline-block;}
+  button#refresh:hover{border-color:var(--accent-dim);color:var(--text);}
+  .spin{display:inline-block;}
+  .spin.active{animation:spin 0.8s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){ .spin.active{animation:none;} }
 
-  .summary{
-    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;
+  /* ---- Portfolio hero ---- */
+  .portfolio{margin-bottom:38px;}
+  .portfolio-head{display:flex;align-items:baseline;gap:9px;margin-bottom:14px;}
+  .flag{font-size:15px;}
+  .portfolio-title{font-family:'Fraunces',serif;font-size:16px;font-weight:500;color:var(--text-dim);}
+
+  .hero-figure{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+  .hero-value{font-family:'Fraunces',serif;font-size:36px;font-weight:500;letter-spacing:-0.015em;}
+  .hero-delta{font-size:14px;font-weight:500;}
+  .hero-delta.pos{color:var(--gain);}
+  .hero-delta.neg{color:var(--loss);}
+  .hero-sub{color:var(--muted);font-size:12.5px;margin-bottom:16px;}
+
+  .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface-2);margin-bottom:12px;}
+  .bar-seg{height:100%;min-width:2px;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:20px;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);}
+  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+  /* ---- Asset rows ---- */
+  .asset-list{display:flex;flex-direction:column;}
+  details.asset{border-bottom:1px solid var(--border);}
+  details.asset:first-child{border-top:1px solid var(--border);}
+  details.asset summary{
+    list-style:none;cursor:pointer;padding:13px 2px;
+    display:flex;align-items:center;gap:10px;
   }
-  .summary .box{
-    background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px;
+  details.asset summary::-webkit-details-marker{display:none;}
+  .asset-dot{width:9px;height:9px;border-radius:2.5px;flex-shrink:0;}
+  .asset-id{flex:1;min-width:0;}
+  .asset-ticker{font-weight:600;font-size:14.5px;}
+  .asset-status{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .asset-status.gain{color:var(--gain);}
+  .asset-status.loss{color:var(--loss);}
+  .asset-figures{text-align:right;flex-shrink:0;}
+  .asset-value{font-size:14.5px;font-weight:600;}
+  .asset-pct{font-size:12px;color:var(--muted);margin-top:1px;}
+  .chev{color:var(--muted);transition:transform .15s ease;flex-shrink:0;width:14px;}
+  @media (prefers-reduced-motion: reduce){ .chev{transition:none;} }
+  details[open] .chev{transform:rotate(90deg);}
+
+  .asset-detail{padding:0 2px 16px 19px;display:grid;grid-template-columns:1fr 1fr;gap:9px 16px;}
+  .asset-detail .dd{font-size:12px;color:var(--muted);}
+  .asset-detail .dv{font-size:13.5px;font-weight:500;margin-top:1px;}
+  .asset-detail .dv.gain{color:var(--gain);}
+  .asset-detail .dv.loss{color:var(--loss);}
+
+  .empty-msg{color:var(--muted);font-size:13px;padding:14px 2px;}
+  .error{background:var(--loss-bg);color:var(--loss);border-radius:10px;padding:11px 13px;font-size:12.5px;margin-bottom:14px;}
+
+  /* ---- Secondary sections ---- */
+  .sec{margin-top:34px;}
+  .sec > summary{
+    list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
   }
-  .summary .box.full{grid-column:1 / -1;}
-  .box .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
-  .box .value{font-size:20px;font-weight:700;}
-  .value.pos{color:var(--green);}
-  .value.neg{color:var(--red);}
+  .sec > summary::-webkit-details-marker{display:none;}
+  .sec-title{font-family:'Fraunces',serif;font-size:15px;font-weight:500;display:flex;align-items:center;gap:8px;}
+  .sec-count{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .sec[open] > summary{border-bottom-color:transparent;}
+  .sec .chev{transform:none;}
+  .sec[open] .chev{transform:rotate(90deg);}
+  .sec-body{padding:6px 0 4px;}
 
-  .assets{display:flex;flex-direction:column;gap:10px;}
-  .asset{
-    background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;
+  .row-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;margin-bottom:9px;
   }
-  .asset-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .asset-name{font-size:16px;font-weight:700;}
-  .badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;}
-  .badge.in{background:var(--green-bg);color:var(--green);}
-  .badge.out{background:var(--amber-bg);color:var(--amber);}
-  .badge.na{background:var(--card-border);color:var(--muted);}
-  .asset-row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px;}
-  .asset-row b{color:var(--text);font-weight:600;}
-  .pl.pos{color:var(--green);font-weight:600;}
-  .pl.neg{color:var(--red);font-weight:600;}
+  .row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;}
+  .row-name{font-weight:600;font-size:14px;}
+  .row-badge{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--muted);}
+  .row-badge.ok{background:var(--gain-bg);color:var(--gain);}
+  .row-field{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .row-field b{color:var(--text-dim);font-weight:500;}
+  .row-obs{color:var(--muted);font-size:11.5px;margin-top:7px;font-style:italic;border-top:1px dashed var(--border);padding-top:7px;}
 
-  .section-title{font-size:15px;font-weight:700;margin:26px 0 10px;display:flex;align-items:center;gap:8px;}
-  .section-title .count{font-size:11px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--card-border);border-radius:999px;padding:2px 8px;}
-
-  .watch-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-  .watch-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .watch-name{font-size:16px;font-weight:700;}
-  .watch-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--card-border);color:var(--muted);}
-  .watch-badge.bought{background:var(--green-bg);color:var(--green);}
-  .watch-obs{color:var(--muted);font-size:12px;margin-top:6px;font-style:italic;}
-  .empty-msg{color:var(--muted);font-size:13px;text-align:center;padding:16px 0;}
-
-  .buy-card{background:var(--card);border:1px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-  .buy-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .buy-name{font-size:16px;font-weight:700;}
-  .buy-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--amber-bg);color:var(--amber);}
-
-  .cost-card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-  .cost-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .cost-date{font-size:16px;font-weight:700;}
-  .cost-badge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap;background:var(--card-border);color:var(--muted);}
-  .cost-badge.confirmed{background:var(--green-bg);color:var(--green);}
-  .cost-badge.estimated{background:var(--amber-bg);color:var(--amber);}
-  .cost-total{background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-
-  footer{margin-top:22px;color:var(--muted);font-size:11px;text-align:center;line-height:1.5;}
-  .error{background:var(--red-bg);color:var(--red);border-radius:12px;padding:12px 14px;font-size:13px;margin-bottom:16px;}
-  .skeleton{opacity:0.4;}
+  footer{margin-top:40px;color:var(--muted);font-size:11px;line-height:1.6;border-top:1px solid var(--border);padding-top:16px;}
 </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Carteira Brasil</h1>
-      <div class="sub" id="updated">carregando...</div>
+      <div class="brand">Carteira <em>Vagner</em></div>
+      <div class="updated" id="updated">carregando…</div>
     </div>
-    <button id="refresh" onclick="load(true); loadUSA(); loadBuying(); loadWatchlist(); loadCosts();">↻ Atualizar</button>
+    <button id="refresh" onclick="refreshAll()"><span class="spin" id="spinIcon">↻</span> Atualizar</button>
   </header>
 
-  <div id="errorBox"></div>
+  <!-- BRASIL -->
+  <section class="portfolio">
+    <div class="portfolio-head"><span class="flag">🇧🇷</span><span class="portfolio-title">Brasil</span></div>
+    <div id="errorBox"></div>
+    <div class="hero-figure">
+      <div class="hero-value num" id="totalAtual">—</div>
+      <div class="hero-delta num" id="totalPL">—</div>
+    </div>
+    <div class="hero-sub" id="totalSub">investido —</div>
+    <div class="bar" id="allocBar"></div>
+    <div class="legend" id="allocLegend"></div>
+    <div class="asset-list" id="assets">
+      <div class="empty-msg">Carregando…</div>
+    </div>
+  </section>
 
-  <div class="summary">
-    <div class="box"><div class="label">Investido</div><div class="value" id="totalInvest">—</div></div>
-    <div class="box"><div class="label">Valor atual</div><div class="value" id="totalAtual">—</div></div>
-    <div class="box full"><div class="label">Lucro / Prejuízo</div><div class="value" id="totalPL">—</div></div>
-  </div>
+  <!-- EUA -->
+  <section class="portfolio">
+    <div class="portfolio-head"><span class="flag">🇺🇸</span><span class="portfolio-title">EUA (IBKR)</span></div>
+    <div id="usaErrorBox"></div>
+    <div class="hero-figure">
+      <div class="hero-value num" id="usaAtual">—</div>
+      <div class="hero-delta num" id="usaPL">—</div>
+    </div>
+    <div class="hero-sub" id="usaSub">investido —</div>
+    <div class="bar" id="usaAllocBar"></div>
+    <div class="legend" id="usaAllocLegend"></div>
+    <div class="asset-list" id="usaAssets">
+      <div class="empty-msg">Carregando…</div>
+    </div>
+  </section>
 
-  <div class="assets" id="assets">
-    <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
-  </div>
+  <details class="sec">
+    <summary><span class="sec-title">🛒 Em compra <span class="sec-count" id="buyCount"></span></span><span class="chev">›</span></summary>
+    <div class="sec-body">
+      <div id="buyErrorBox"></div>
+      <div id="buying"><div class="empty-msg">Carregando…</div></div>
+    </div>
+  </details>
 
-  <div class="section-title">🇺🇸 Carteira EUA (IBKR)</div>
-  <div class="summary">
-    <div class="box"><div class="label">Investido (US$)</div><div class="value" id="usaInvest">—</div></div>
-    <div class="box"><div class="label">Valor atual (US$)</div><div class="value" id="usaAtual">—</div></div>
-    <div class="box full"><div class="label">Lucro / Prejuízo (US$)</div><div class="value" id="usaPL">—</div></div>
-  </div>
-  <div id="usaErrorBox"></div>
-  <div class="assets" id="usaAssets">
-    <div class="asset skeleton"><div class="asset-top"><div class="asset-name">Carregando…</div></div></div>
-  </div>
+  <details class="sec">
+    <summary><span class="sec-title">👀 Acompanhamento <span class="sec-count" id="watchCount"></span></span><span class="chev">›</span></summary>
+    <div class="sec-body">
+      <div id="watchErrorBox"></div>
+      <div id="watchlist"><div class="empty-msg">Carregando…</div></div>
+    </div>
+  </details>
 
-  <div class="section-title">🛒 Em compra <span class="count" id="buyCount"></span></div>
-  <div id="buyErrorBox"></div>
-  <div id="buying">
-    <div class="buy-card skeleton"><div class="buy-top"><div class="buy-name">Carregando…</div></div></div>
-  </div>
-
-  <div class="section-title">👀 Em acompanhamento <span class="count" id="watchCount"></span></div>
-  <div id="watchErrorBox"></div>
-  <div id="watchlist">
-    <div class="watch-card skeleton"><div class="watch-top"><div class="watch-name">Carregando…</div></div></div>
-  </div>
-
-  <div class="section-title">💸 Custos (corretagem, impostos, venda) <span class="count" id="costCount"></span></div>
-  <div id="costErrorBox"></div>
-  <div id="costs">
-    <div class="cost-card skeleton"><div class="cost-top"><div class="cost-date">Carregando…</div></div></div>
-  </div>
+  <details class="sec">
+    <summary><span class="sec-title">💸 Custos <span class="sec-count" id="costCount"></span></span><span class="chev">›</span></summary>
+    <div class="sec-body">
+      <div id="costErrorBox"></div>
+      <div id="costs"><div class="empty-msg">Carregando…</div></div>
+    </div>
+  </details>
 
   <footer>
     Dados via Google Finance (atraso típico de 15–20 min). Preço pago é o preço médio real de compra executado na corretora.<br>
     Carteira EUA: posições reais executadas na Interactive Brokers (IBKR), em dólar. SPY/QQQ são posições-ponte enquanto a permissão de negociação para CSPX/EQQQ (mercados do Reino Unido/Suíça) não é aprovada.<br>
-    "Não comprado": ordem ainda não executada (rejeitada ou pendente) — não entra no total investido.<br>
-    Em compra: ordens enviadas à corretora (mercado à vista/fracionário) e ainda aguardando execução no próximo pregão.<br>
-    Em acompanhamento: ativos que ainda não foram comprados, só observados.<br>
-    Custos: corretagem e impostos por nota de negociação. "Estimado" = aguardando nota oficial (D+1); "Confirmado" = já conferido na nota da XP. Despesas de venda só aparecem quando algo for vendido.<br>
-    Toque em "Atualizar" para buscar os valores mais recentes.
+    "Não comprado": ordem ainda não executada — não entra no total investido. Em compra: ordens enviadas aguardando execução. Acompanhamento: ativos só observados, não comprados.<br>
+    Custos: corretagem e impostos por nota de negociação. Toque em "Atualizar" para buscar os valores mais recentes.
   </footer>
 
 <script>
@@ -161,6 +218,8 @@ const WATCH_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export
 const BUY_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${BUY_GID}&_=` + Date.now();
 const COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${COST_GID}&_=` + Date.now();
 const USA_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${USA_GID}&_=` + Date.now();
+
+const SEG_COLORS = ['#c98a52','#5f9c8a','#b4654a','#7fae8a','#8f78a8','#c9a441','#5b8c9e','#a85f7a','#7a9c56','#c97c7c'];
 
 function parseCSV(text){
   const rows = [];
@@ -188,198 +247,143 @@ function toNumber(s){
   const clean = s.replace(/\./g,'').replace(',', '.').replace(/[^\d.-]/g,'');
   return parseFloat(clean);
 }
+function fmtBRL(n){ if(isNaN(n)) return '—'; return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+function fmtUSD(n){ if(isNaN(n)) return '—'; return n.toLocaleString('en-US', {style:'currency', currency:'USD'}); }
+function fmtNum(n){ if(isNaN(n)) return '—'; return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtPct(n){ if(isNaN(n)) return '—'; const s=(n*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}); return (n>0?'+':'')+s+'%'; }
+// Coluna "Variação desde a compra" já vem do CSV como percentual (-2,9), não fração.
+function fmtPctRaw(n){ if(isNaN(n)) return '—'; const s=n.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}); return (n>0?'+':'')+s+'%'; }
+function fmtShare(n){ if(isNaN(n)) return '—'; return n.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; }
 
-function fmtBRL(n){
-  if(isNaN(n)) return '—';
-  return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+async function fetchRows(url, headerName){
+  const res = await fetch(url, {cache:'no-store'});
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  const rows = parseCSV(text);
+  const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === headerName);
+  if(headerIdx === -1) throw new Error('Cabeçalho não encontrado');
+  const dataRows = [];
+  for(let i = headerIdx+1; i < rows.length; i++){
+    const r = rows[i];
+    if(!r[0] || r[0].trim() === '') continue;
+    if(r[0].trim().toLowerCase().startsWith('total')) break;
+    dataRows.push(r);
+  }
+  return dataRows;
 }
 
-function fmtPct(n){
-  if(isNaN(n)) return '—';
-  const s = (n*100).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
-  return (n>0?'+':'') + s + '%';
+function renderPortfolio(dataRows, opts){
+  const { fmtMoney, elAtual, elPL, elSub, elBar, elLegend, elAssets } = opts;
+
+  const parsed = dataRows.map(r => ({
+    nome: r[0],
+    pago: toNumber(r[1]),
+    qtd: toNumber(r[2]),
+    atual: toNumber(r[3]),
+    varr: toNumber(r[4]),
+    status: (r[5]||'').trim(),
+    investido: toNumber(r[6]),
+    valorAtual: toNumber(r[7]),
+    pl: toNumber(r[8]),
+  })).filter(d => !isNaN(d.valorAtual) && d.valorAtual > 0);
+
+  const totalInvest = parsed.reduce((s,d)=> s + (isNaN(d.investido)?0:d.investido), 0);
+  const totalAtual = parsed.reduce((s,d)=> s + d.valorAtual, 0);
+  const totalPL = totalAtual - totalInvest;
+
+  elAtual.textContent = fmtMoney(totalAtual);
+  const plEl = elPL;
+  plEl.textContent = (totalPL>0?'+':'') + fmtMoney(totalPL);
+  plEl.className = 'hero-delta num ' + (totalPL > 0 ? 'pos' : (totalPL < 0 ? 'neg' : ''));
+  elSub.textContent = 'investido ' + fmtMoney(totalInvest) + (totalInvest ? '  ·  ' + fmtPctRaw(totalInvest? (totalPL/totalInvest*100):NaN) : '');
+
+  // sort by share desc for bar + legend + list
+  parsed.sort((a,b) => b.valorAtual - a.valorAtual);
+
+  elBar.innerHTML = parsed.map((d,i) => {
+    const pct = totalAtual ? (d.valorAtual/totalAtual*100) : 0;
+    return `<div class="bar-seg" style="width:${pct}%;background:${SEG_COLORS[i%SEG_COLORS.length]}"></div>`;
+  }).join('');
+
+  elLegend.innerHTML = parsed.map((d,i) => {
+    const pct = totalAtual ? (d.valorAtual/totalAtual*100) : 0;
+    return `<span class="legend-item"><span class="legend-dot" style="background:${SEG_COLORS[i%SEG_COLORS.length]}"></span>${d.nome} ${fmtShare(pct)}</span>`;
+  }).join('');
+
+  if(parsed.length === 0){
+    elAssets.innerHTML = '<div class="empty-msg">Nenhuma posição ainda.</div>';
+    return;
+  }
+
+  elAssets.innerHTML = parsed.map((d,i) => {
+    const pct = totalAtual ? (d.valorAtual/totalAtual*100) : 0;
+    const plClass = d.pl > 0 ? 'gain' : (d.pl < 0 ? 'loss' : '');
+    const statusTxt = d.status === 'Em lucro' ? 'em lucro' : (d.status === 'Em prejuízo' ? 'em prejuízo' : d.status);
+    return `
+      <details class="asset">
+        <summary>
+          <span class="asset-dot" style="background:${SEG_COLORS[i%SEG_COLORS.length]}"></span>
+          <span class="asset-id">
+            <div class="asset-ticker">${d.nome}</div>
+            <div class="asset-status ${plClass}">${statusTxt}</div>
+          </span>
+          <span class="asset-figures">
+            <div class="asset-value num">${fmtMoney(d.valorAtual)}</div>
+            <div class="asset-pct num">${fmtShare(pct)}</div>
+          </span>
+          <span class="chev">›</span>
+        </summary>
+        <div class="asset-detail">
+          <div><div class="dd">Preço pago</div><div class="dv num">${d.pago===0||isNaN(d.pago)?'—':fmtMoney(d.pago)}</div></div>
+          <div><div class="dd">Preço atual</div><div class="dv num">${isNaN(d.atual)?'—':fmtMoney(d.atual)}</div></div>
+          <div><div class="dd">Quantidade</div><div class="dv num">${isNaN(d.qtd)?'—':d.qtd}</div></div>
+          <div><div class="dd">Variação desde a compra</div><div class="dv num ${plClass}">${fmtPctRaw(d.varr)}</div></div>
+          <div><div class="dd">Valor investido</div><div class="dv num">${isNaN(d.investido)?'—':fmtMoney(d.investido)}</div></div>
+          <div><div class="dd">Lucro / Prejuízo</div><div class="dv num ${plClass}">${isNaN(d.pl)?'—':((d.pl>0?'+':'')+fmtMoney(d.pl))}</div></div>
+        </div>
+      </details>
+    `;
+  }).join('');
 }
 
-// A coluna "Variação vs. limite" já vem do CSV formatada como percentual
-// (ex.: "-2,9%"), ou seja, toNumber() já devolve o valor em pontos percentuais
-// (-2.9), não uma fração (-0.029). Por isso usa formatação direta, sem
-// multiplicar por 100 de novo (evita o bug de exibir "-290,0%").
-function fmtPctRaw(n){
-  if(isNaN(n)) return '—';
-  const s = n.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
-  return (n>0?'+':'') + s + '%';
-}
-
-async function load(manual){
-  const btn = document.getElementById('refresh');
-  const icon = btn.querySelector('.spin') || btn;
-  btn.innerHTML = '<span class="spin">↻</span> Atualizando';
+async function load(){
   const errorBox = document.getElementById('errorBox');
   errorBox.innerHTML = '';
   try{
-    const res = await fetch(CSV_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
-    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
-
-    const dataRows = [];
-    for(let i = headerIdx+1; i < rows.length; i++){
-      const r = rows[i];
-      if(!r[0] || r[0].trim() === '') continue;
-      if(r[0].trim() === 'Total'){
-        dataRows.totalRow = r;
-        break;
-      }
-      dataRows.push(r);
-    }
-
-    const assetsEl = document.getElementById('assets');
-    assetsEl.innerHTML = '';
-
-    let totalInvest = 0, totalAtual = 0;
-
-    dataRows.forEach(r => {
-      const nome = r[0];
-      const limite = toNumber(r[1]);
-      const qtd = toNumber(r[2]);
-      const atual = toNumber(r[3]);
-      const varr = toNumber(r[4]);
-      const status = (r[5]||'').trim();
-      const investido = toNumber(r[6]);
-      const valorAtual = toNumber(r[7]);
-      const pl = toNumber(r[8]);
-      const pctCarteira = (r[9]||'').trim();
-
-      if(!isNaN(investido)) totalInvest += investido;
-      if(!isNaN(valorAtual)) totalAtual += valorAtual;
-
-      let badgeClass = 'na', badgeText = status || 'Sem cotação';
-      if(status === 'Em lucro'){ badgeClass='in'; }
-      else if(status === 'Em prejuízo'){ badgeClass='out'; }
-
-      const plClass = pl > 0 ? 'pos' : (pl < 0 ? 'neg' : '');
-
-      const div = document.createElement('div');
-      div.className = 'asset';
-      div.innerHTML = `
-        <div class="asset-top">
-          <div class="asset-name">${nome}</div>
-          <div class="badge ${badgeClass}">${badgeText}</div>
-        </div>
-        <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtBRL(atual)}</b></div>
-        <div class="asset-row"><span>Preço pago</span><b>${limite===0||isNaN(limite)?'—':fmtBRL(limite)}</b></div>
-        <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPctRaw(varr)}</b></div>
-        <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtBRL(valorAtual)}</b></div>
-        <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtBRL(pl)}</b></div>
-        <div class="asset-row"><span>% da carteira Brasil</span><b>${pctCarteira||'—'}</b></div>
-      `;
-      assetsEl.appendChild(div);
+    const dataRows = await fetchRows(CSV_URL, 'Ativo');
+    renderPortfolio(dataRows, {
+      fmtMoney: fmtBRL,
+      elAtual: document.getElementById('totalAtual'),
+      elPL: document.getElementById('totalPL'),
+      elSub: document.getElementById('totalSub'),
+      elBar: document.getElementById('allocBar'),
+      elLegend: document.getElementById('allocLegend'),
+      elAssets: document.getElementById('assets'),
     });
-
-    document.getElementById('totalInvest').textContent = fmtBRL(totalInvest);
-    document.getElementById('totalAtual').textContent = fmtBRL(totalAtual);
-    const totalPL = totalAtual - totalInvest;
-    const plEl = document.getElementById('totalPL');
-    plEl.textContent = fmtBRL(totalPL);
-    plEl.className = 'value ' + (totalPL > 0 ? 'pos' : (totalPL < 0 ? 'neg' : ''));
-
     document.getElementById('updated').textContent =
       'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-
   } catch(err){
-    errorBox.innerHTML = `<div class="error">Não consegui buscar os dados agora (${err.message}). Verifique sua internet e tente de novo.</div>`;
-    document.getElementById('updated').textContent = 'Falha na atualização';
-  } finally {
-    btn.innerHTML = '↻ Atualizar';
+    errorBox.innerHTML = `<div class="error">Não consegui buscar os dados agora (${err.message}).</div>`;
   }
-}
-
-function fmtUSD(n){
-  if(isNaN(n)) return '—';
-  return n.toLocaleString('en-US', {style:'currency', currency:'USD'});
 }
 
 async function loadUSA(){
   const errorBox = document.getElementById('usaErrorBox');
   errorBox.innerHTML = '';
   try{
-    const res = await fetch(USA_CSV_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
-    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
-
-    const dataRows = [];
-    for(let i = headerIdx+1; i < rows.length; i++){
-      const r = rows[i];
-      if(!r[0] || r[0].trim() === '') continue;
-      if(r[0].trim() === 'Total'){ dataRows.totalRow = r; break; }
-      dataRows.push(r);
-    }
-
-    const assetsEl = document.getElementById('usaAssets');
-    assetsEl.innerHTML = '';
-
-    let totalInvest = 0, totalAtual = 0;
-
-    dataRows.forEach(r => {
-      const nome = r[0];
-      const pago = toNumber(r[1]);
-      const qtd = toNumber(r[2]);
-      const atual = toNumber(r[3]);
-      const varr = toNumber(r[4]);
-      const status = (r[5]||'').trim();
-      const investido = toNumber(r[6]);
-      const valorAtual = toNumber(r[7]);
-      const pl = toNumber(r[8]);
-      const pctCarteira = (r[9]||'').trim();
-
-      if(!isNaN(investido)) totalInvest += investido;
-      if(!isNaN(valorAtual)) totalAtual += valorAtual;
-
-      let badgeClass = 'na', badgeText = status || 'Sem cotação';
-      if(status === 'Em lucro'){ badgeClass='in'; }
-      else if(status === 'Em prejuízo'){ badgeClass='out'; }
-
-      const plClass = pl > 0 ? 'pos' : (pl < 0 ? 'neg' : '');
-
-      const div = document.createElement('div');
-      div.className = 'asset';
-      div.innerHTML = `
-        <div class="asset-top">
-          <div class="asset-name">${nome}</div>
-          <div class="badge ${badgeClass}">${badgeText}</div>
-        </div>
-        <div class="asset-row"><span>Preço atual</span><b>${isNaN(atual)?'—':fmtUSD(atual)}</b></div>
-        <div class="asset-row"><span>Preço pago</span><b>${pago===0||isNaN(pago)?'—':fmtUSD(pago)}</b></div>
-        <div class="asset-row"><span>Variação desde a compra</span><b>${fmtPct(varr)}</b></div>
-        <div class="asset-row"><span>Valor atual (${isNaN(qtd)?'-':qtd} un.)</span><b>${isNaN(valorAtual)?'—':fmtUSD(valorAtual)}</b></div>
-        <div class="asset-row"><span>Lucro / Prejuízo</span><b class="pl ${plClass}">${isNaN(pl)?'—':fmtUSD(pl)}</b></div>
-        <div class="asset-row"><span>% da carteira EUA</span><b>${pctCarteira||'—'}</b></div>
-      `;
-      assetsEl.appendChild(div);
+    const dataRows = await fetchRows(USA_CSV_URL, 'Ativo');
+    renderPortfolio(dataRows, {
+      fmtMoney: fmtUSD,
+      elAtual: document.getElementById('usaAtual'),
+      elPL: document.getElementById('usaPL'),
+      elSub: document.getElementById('usaSub'),
+      elBar: document.getElementById('usaAllocBar'),
+      elLegend: document.getElementById('usaAllocLegend'),
+      elAssets: document.getElementById('usaAssets'),
     });
-
-    document.getElementById('usaInvest').textContent = fmtUSD(totalInvest);
-    document.getElementById('usaAtual').textContent = fmtUSD(totalAtual);
-    const totalPL = totalAtual - totalInvest;
-    const plEl = document.getElementById('usaPL');
-    plEl.textContent = fmtUSD(totalPL);
-    plEl.className = 'value ' + (totalPL > 0 ? 'pos' : (totalPL < 0 ? 'neg' : ''));
-
   } catch(err){
     errorBox.innerHTML = `<div class="error">Não consegui buscar a carteira EUA agora (${err.message}).</div>`;
   }
-}
-
-function fmtNum(n){
-  if(isNaN(n)) return '—';
-  return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 async function loadBuying(){
@@ -388,55 +392,29 @@ async function loadBuying(){
   const countEl = document.getElementById('buyCount');
   buyErrorBox.innerHTML = '';
   try{
-    const res = await fetch(BUY_CSV_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
-    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
-
-    const dataRows = [];
-    for(let i = headerIdx+1; i < rows.length; i++){
-      const r = rows[i];
-      if(!r[0] || r[0].trim() === '') continue;
-      if(r[0].trim().toLowerCase().startsWith('total')) break;
-      dataRows.push(r);
-    }
-
-    buyingEl.innerHTML = '';
-
+    const dataRows = await fetchRows(BUY_CSV_URL, 'Ativo');
     if(dataRows.length === 0){
       buyingEl.innerHTML = '<div class="empty-msg">Nenhuma ordem pendente no momento.</div>';
       countEl.textContent = '';
       return;
     }
-
     countEl.textContent = dataRows.length;
-
-    dataRows.forEach(r => {
+    buyingEl.innerHTML = dataRows.map(r => {
       const nome = r[0];
       const qtd = (r[1]||'').trim();
       const precoEnvio = toNumber(r[2]);
       const valorEstimado = toNumber(r[3]);
       const tipoOrdem = (r[4]||'').trim();
       const status = (r[5]||'').trim();
-
-      const div = document.createElement('div');
-      div.className = 'buy-card';
-      div.innerHTML = `
-        <div class="buy-top">
-          <div class="buy-name">${nome}</div>
-          <div class="buy-badge">${status || 'Agendada'}</div>
-        </div>
-        <div class="asset-row"><span>Qtd.</span><b>${qtd||'—'}</b></div>
-        <div class="asset-row"><span>Preço de envio</span><b>${isNaN(precoEnvio)?'—':fmtBRL(precoEnvio)}</b></div>
-        <div class="asset-row"><span>Valor estimado</span><b>${isNaN(valorEstimado)?'—':fmtBRL(valorEstimado)}</b></div>
-        <div class="asset-row"><span>Tipo de ordem</span><b>${tipoOrdem||'—'}</b></div>
-      `;
-      buyingEl.appendChild(div);
-    });
-
+      return `
+        <div class="row-card">
+          <div class="row-top"><span class="row-name">${nome}</span><span class="row-badge">${status || 'Agendada'}</span></div>
+          <div class="row-field"><span>Qtd.</span><b class="num">${qtd||'—'}</b></div>
+          <div class="row-field"><span>Preço de envio</span><b class="num">${isNaN(precoEnvio)?'—':fmtBRL(precoEnvio)}</b></div>
+          <div class="row-field"><span>Valor estimado</span><b class="num">${isNaN(valorEstimado)?'—':fmtBRL(valorEstimado)}</b></div>
+          <div class="row-field"><span>Tipo de ordem</span><b>${tipoOrdem||'—'}</b></div>
+        </div>`;
+    }).join('');
   } catch(err){
     buyErrorBox.innerHTML = `<div class="error">Não consegui buscar as ordens em compra agora (${err.message}).</div>`;
   }
@@ -448,32 +426,14 @@ async function loadWatchlist(){
   const countEl = document.getElementById('watchCount');
   watchErrorBox.innerHTML = '';
   try{
-    const res = await fetch(WATCH_CSV_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Ativo');
-    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
-
-    const dataRows = [];
-    for(let i = headerIdx+1; i < rows.length; i++){
-      const r = rows[i];
-      if(!r[0] || r[0].trim() === '') continue;
-      dataRows.push(r);
-    }
-
-    watchlistEl.innerHTML = '';
-
+    const dataRows = await fetchRows(WATCH_CSV_URL, 'Ativo');
     if(dataRows.length === 0){
       watchlistEl.innerHTML = '<div class="empty-msg">Nenhum ativo em acompanhamento ainda.</div>';
       countEl.textContent = '';
       return;
     }
-
     countEl.textContent = dataRows.length;
-
-    dataRows.forEach(r => {
+    watchlistEl.innerHTML = dataRows.map(r => {
       const nome = r[0];
       const dataEntrada = (r[1]||'').trim();
       const precoEntrada = toNumber(r[2]);
@@ -481,24 +441,16 @@ async function loadWatchlist(){
       const varr = toNumber(r[4]);
       const obs = (r[5]||'').trim();
       const comprou = (r[6]||'').trim().toUpperCase() === 'TRUE';
-
-      const varClass = isNaN(varr) ? '' : (varr > 0 ? 'pos' : (varr < 0 ? 'neg' : ''));
-
-      const div = document.createElement('div');
-      div.className = 'watch-card';
-      div.innerHTML = `
-        <div class="watch-top">
-          <div class="watch-name">${nome}</div>
-          <div class="watch-badge ${comprou?'bought':''}">${comprou ? 'Comprado' : 'Observando'}</div>
-        </div>
-        <div class="asset-row"><span>Entrada (${dataEntrada||'-'})</span><b>${isNaN(precoEntrada)?'—':fmtNum(precoEntrada)}</b></div>
-        <div class="asset-row"><span>Preço atual</span><b>${isNaN(precoAtual)?'—':fmtNum(precoAtual)}</b></div>
-        <div class="asset-row"><span>Variação desde a entrada</span><b class="pl ${varClass}">${fmtPctRaw(varr)}</b></div>
-        ${obs ? `<div class="watch-obs">${obs}</div>` : ''}
-      `;
-      watchlistEl.appendChild(div);
-    });
-
+      const varClass = isNaN(varr) ? '' : (varr > 0 ? 'gain' : (varr < 0 ? 'loss' : ''));
+      return `
+        <div class="row-card">
+          <div class="row-top"><span class="row-name">${nome}</span><span class="row-badge ${comprou?'ok':''}">${comprou?'Comprado':'Observando'}</span></div>
+          <div class="row-field"><span>Entrada (${dataEntrada||'-'})</span><b class="num">${isNaN(precoEntrada)?'—':fmtNum(precoEntrada)}</b></div>
+          <div class="row-field"><span>Preço atual</span><b class="num">${isNaN(precoAtual)?'—':fmtNum(precoAtual)}</b></div>
+          <div class="row-field"><span>Variação desde a entrada</span><b class="num ${varClass}">${fmtPctRaw(varr)}</b></div>
+          ${obs ? `<div class="row-obs">${obs}</div>` : ''}
+        </div>`;
+    }).join('');
   } catch(err){
     watchErrorBox.innerHTML = `<div class="error">Não consegui buscar o acompanhamento agora (${err.message}).</div>`;
   }
@@ -510,34 +462,14 @@ async function loadCosts(){
   const countEl = document.getElementById('costCount');
   costErrorBox.innerHTML = '';
   try{
-    const res = await fetch(COST_CSV_URL, {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-
-    const headerIdx = rows.findIndex(r => r[0] && r[0].trim() === 'Data');
-    if(headerIdx === -1) throw new Error('Cabeçalho não encontrado no CSV');
-
-    const dataRows = [];
-    let totalRow = null;
-    for(let i = headerIdx+1; i < rows.length; i++){
-      const r = rows[i];
-      if(!r[0] || r[0].trim() === '') continue;
-      if(r[0].trim().toLowerCase().startsWith('total')){ totalRow = r; break; }
-      dataRows.push(r);
-    }
-
-    costsEl.innerHTML = '';
-
+    const dataRows = await fetchRows(COST_CSV_URL, 'Data');
     if(dataRows.length === 0){
       costsEl.innerHTML = '<div class="empty-msg">Nenhum custo registrado ainda.</div>';
       countEl.textContent = '';
       return;
     }
-
     countEl.textContent = dataRows.length;
-
-    dataRows.forEach(r => {
+    costsEl.innerHTML = dataRows.map(r => {
       const data = (r[0]||'').trim();
       const operacao = (r[1]||'').trim();
       const nNegocios = (r[2]||'').trim();
@@ -547,50 +479,28 @@ async function loadCosts(){
       const total = toNumber(r[6]);
       const status = (r[7]||'').trim();
       const isConfirmed = status.toLowerCase().includes('confirmado');
-
-      const div = document.createElement('div');
-      div.className = 'cost-card';
-      div.innerHTML = `
-        <div class="cost-top">
-          <div class="cost-date">${data} · ${operacao||'—'}</div>
-          <div class="cost-badge ${isConfirmed?'confirmed':'estimated'}">${status||'—'}</div>
-        </div>
-        <div class="asset-row"><span>Nº negócios</span><b>${nNegocios||'—'}</b></div>
-        <div class="asset-row"><span>Corretagem</span><b>${isNaN(corretagem)?'—':fmtBRL(corretagem)}</b></div>
-        <div class="asset-row"><span>Impostos/IRRF</span><b>${isNaN(impostos)?'pendente':fmtBRL(impostos)}</b></div>
-        <div class="asset-row"><span>Despesas de venda</span><b>${isNaN(despesaVenda)?'—':fmtBRL(despesaVenda)}</b></div>
-        <div class="asset-row"><span>Total</span><b>${isNaN(total)?'pendente':fmtBRL(total)}</b></div>
-      `;
-      costsEl.appendChild(div);
-    });
-
-    if(totalRow){
-      const tCorretagem = toNumber(totalRow[3]);
-      const tImpostos = toNumber(totalRow[4]);
-      const tVenda = toNumber(totalRow[5]);
-      const tTotal = toNumber(totalRow[6]);
-      const div = document.createElement('div');
-      div.className = 'cost-total';
-      div.innerHTML = `
-        <div class="cost-top"><div class="cost-date">Total acumulado</div></div>
-        <div class="asset-row"><span>Corretagem</span><b>${isNaN(tCorretagem)?'—':fmtBRL(tCorretagem)}</b></div>
-        <div class="asset-row"><span>Impostos/IRRF</span><b>${isNaN(tImpostos)?'—':fmtBRL(tImpostos)}</b></div>
-        <div class="asset-row"><span>Despesas de venda</span><b>${isNaN(tVenda)?'—':fmtBRL(tVenda)}</b></div>
-        <div class="asset-row"><span>Total geral</span><b>${isNaN(tTotal)?'—':fmtBRL(tTotal)}</b></div>
-      `;
-      costsEl.appendChild(div);
-    }
-
+      return `
+        <div class="row-card">
+          <div class="row-top"><span class="row-name">${data} · ${operacao||'—'}</span><span class="row-badge ${isConfirmed?'ok':''}">${status||'—'}</span></div>
+          <div class="row-field"><span>Nº negócios</span><b class="num">${nNegocios||'—'}</b></div>
+          <div class="row-field"><span>Corretagem</span><b class="num">${isNaN(corretagem)?'—':fmtBRL(corretagem)}</b></div>
+          <div class="row-field"><span>Impostos/IRRF</span><b class="num">${isNaN(impostos)?'pendente':fmtBRL(impostos)}</b></div>
+          <div class="row-field"><span>Total</span><b class="num">${isNaN(total)?'pendente':fmtBRL(total)}</b></div>
+        </div>`;
+    }).join('');
   } catch(err){
     costErrorBox.innerHTML = `<div class="error">Não consegui buscar os custos agora (${err.message}).</div>`;
   }
 }
 
-load(false);
-loadUSA();
-loadBuying();
-loadWatchlist();
-loadCosts();
+async function refreshAll(){
+  const spin = document.getElementById('spinIcon');
+  spin.classList.add('active');
+  await Promise.all([load(), loadUSA(), loadBuying(), loadWatchlist(), loadCosts()]);
+  spin.classList.remove('active');
+}
+
+refreshAll();
 </script>
 </body>
 </html>
