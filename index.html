@@ -128,6 +128,8 @@
   .row-name{font-weight:600;font-size:14px;}
   .row-badge{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap;background:var(--surface-2);color:var(--muted);}
   .row-badge.ok{background:var(--gain-bg);color:var(--gain);}
+  .row-badge.alert{background:rgba(201,138,82,0.18);color:var(--accent);}
+  .row-card.alert{border-color:var(--accent-dim);}
   .row-field{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:3px;}
   .row-field b{color:var(--text-dim);font-weight:500;}
   .row-obs{color:var(--muted);font-size:11.5px;margin-top:7px;font-style:italic;border-top:1px dashed var(--border);padding-top:7px;}
@@ -461,7 +463,13 @@ async function loadWatchlist(){
       countEl.textContent = '';
       return;
     }
-    countEl.textContent = dataRows.length;
+    const alertCount = dataRows.filter(r => {
+      const comprou = (r[6]||'').trim().toUpperCase() === 'TRUE';
+      const alvo = toNumber(r[7]);
+      const atual = toNumber(r[3]);
+      return !comprou && !isNaN(alvo) && alvo > 0 && !isNaN(atual) && atual <= alvo;
+    }).length;
+    countEl.textContent = alertCount > 0 ? `🔔 ${alertCount}` : dataRows.length;
     watchlistEl.innerHTML = dataRows.map(r => {
       const nome = r[0];
       const dataEntrada = (r[1]||'').trim();
@@ -470,13 +478,19 @@ async function loadWatchlist(){
       const varr = toNumber(r[4]);
       const obs = (r[5]||'').trim();
       const comprou = (r[6]||'').trim().toUpperCase() === 'TRUE';
+      const precoAlvo = toNumber(r[7]);
+      const temAlvo = !isNaN(precoAlvo) && precoAlvo > 0;
+      const alerta = !comprou && temAlvo && !isNaN(precoAtual) && precoAtual <= precoAlvo;
       const varClass = isNaN(varr) ? '' : (varr > 0 ? 'gain' : (varr < 0 ? 'loss' : ''));
+      const badgeClass = comprou ? 'ok' : (alerta ? 'alert' : '');
+      const badgeText = comprou ? 'Comprado' : (alerta ? '🔔 Alvo atingido' : 'Observando');
       return `
-        <div class="row-card">
-          <div class="row-top"><span class="row-name">${nome}</span><span class="row-badge ${comprou?'ok':''}">${comprou?'Comprado':'Observando'}</span></div>
+        <div class="row-card ${alerta?'alert':''}">
+          <div class="row-top"><span class="row-name">${nome}</span><span class="row-badge ${badgeClass}">${badgeText}</span></div>
           <div class="row-field"><span>Entrada (${dataEntrada||'-'})</span><b class="num">${isNaN(precoEntrada)?'—':fmtNum(precoEntrada)}</b></div>
           <div class="row-field"><span>Preço atual</span><b class="num">${isNaN(precoAtual)?'—':fmtNum(precoAtual)}</b></div>
           <div class="row-field"><span>Variação desde a entrada</span><b class="num ${varClass}">${fmtPctRaw(varr)}</b></div>
+          ${temAlvo ? `<div class="row-field"><span>Alvo de entrada</span><b class="num">${fmtNum(precoAlvo)}</b></div>` : ''}
           ${obs ? `<div class="row-obs">${obs}</div>` : ''}
         </div>`;
     }).join('');
