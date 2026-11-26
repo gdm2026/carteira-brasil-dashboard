@@ -1,0 +1,56 @@
+# Roda o motor da Fase 2 (engine/atualizar_pontuacao.py) todo dia de
+# pregão, depois do fechamento da B3, e escreve o filtro técnico
+# (MM50 + mínima de 10 pregões) na aba "Pontuação" da planilha.
+#
+# Não mexe em preço ao vivo — isso já é resolvido pela aba "Dashboard"
+# com fórmulas GOOGLEFINANCE (ver commit de 26/11/2026). Este workflow
+# cobre só o que GOOGLEFINANCE não calcula sozinho: o filtro técnico.
+#
+# Para isto funcionar, três segredos precisam existir em
+# Settings > Secrets and variables > Actions, neste repositório:
+#   BRAPI_TOKEN                   -> token da conta brapi.dev do Vagner
+#   GOOGLE_SHEETS_CREDENTIALS_JSON -> conteúdo INTEIRO do JSON da service
+#                                      account do Google Cloud (não o caminho, o conteúdo)
+#   CARTEIRA_SPREADSHEET_ID        -> ID da planilha "Carteira Brasil - Ordens"
+#
+# A service account também precisa ser adicionada como Editor na
+# planilha (Compartilhar > colar o e-mail da service account).
+#
+# Nenhum destes três segredos deve ser criado por mim — só o Vagner cria
+# credencial/conta em nome dele (regra já registrada no projeto).
+
+name: Atualizar filtro técnico (Carteira Viva)
+
+on:
+  schedule:
+    # 21:00 UTC = 18:00 em São Paulo (UTC-3), depois do fechamento da B3 (17h/18h).
+    # Só dias de semana — não cobre feriados (a brapi.dev simplesmente não
+    # tem pregão novo nesses dias, o script não quebra, só não altera nada).
+    - cron: '0 21 * * 1-5'
+  workflow_dispatch: {}  # permite rodar manualmente em Actions > Run workflow
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instala dependências
+        run: pip install -r engine/requirements.txt
+
+      - name: Grava a credencial da service account num arquivo temporário
+        env:
+          GOOGLE_SHEETS_CREDENTIALS_JSON: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS_JSON }}
+        run: echo "$GOOGLE_SHEETS_CREDENTIALS_JSON" > "$RUNNER_TEMP/sa.json"
+
+      - name: Roda atualizar_pontuacao.py
+        working-directory: engine
+        env:
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ runner.temp }}/sa.json
+          CARTEIRA_SPREADSHEET_ID: ${{ secrets.CARTEIRA_SPREADSHEET_ID }}
+        run: python atualizar_pontuacao.py
